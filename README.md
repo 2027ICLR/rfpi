@@ -11,13 +11,6 @@ Edit `src/index.template.html` (write math as `\( ... \)` or `$$ ... $$`), then 
 The build renders all formulas and inlines `static/data/q_values.json` into `index.html`.
 The interactive manifold demo lives in `static/js/playground.js`.
 
-## Before publishing
-1. Replace the Paper / Code `href="#"` placeholders with an OpenReview PDF link and an
-   anonymized repository (e.g. anonymous.4open.science).
-2. Host anonymously (fresh GitHub Pages account or a Netlify drop), not on a lab/personal domain.
-3. Test-time real-robot numbers come from the draft's Table (marked provisional); the online
-   curve uses the verified results. Update both if numbers change.
-
 ## Contents
 - `static/videos/third_*.mp4`  third-person rollouts (0-2 RFPI success, 3-4 BC failure); only the chest logo is blurred
 - `static/videos/head_*.mp4`   head camera, frame-aligned with the Q-value CSV (drives the synced chart)
