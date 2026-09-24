@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RFPI: Retraction-Filtered Policy Improvement</title>
+<meta name="description" content="Retraction-Filtered Policy Improvement: using a flow policy's own geometry to guide it. Anonymous ICLR 2027 submission.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="static/katex/katex.min.css">
+<style>
+:root{
+  --ink:#22262A; --blue:#2B6CB0; --green:#1F8A70; --orange:#D9822B; --red:#C8453A; --purple:#7B5EA7; --gray:#6B7480;
+  --bg:#ffffff; --soft:#F5F7F9; --line:#E3E7EB; --max:1080px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.65;font-size:17px;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
+section{padding:56px 0;border-top:1px solid var(--line)}
+section.first{border-top:none}
+h1{font-size:44px;line-height:1.15;margin:0 0 10px;letter-spacing:-.02em;font-weight:750}
+h1 .acr{color:var(--green)}
+h2{font-size:30px;margin:0 0 18px;letter-spacing:-.01em}
+h3{font-size:20px;margin:28px 0 10px}
+p{margin:0 0 14px}
+.muted{color:var(--gray)} .small{font-size:14px}
+.katex{font-size:1.05em}
+.katex-display{margin:18px 0;overflow-x:auto;overflow-y:hidden}
+
+nav{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:22px;align-items:center;height:52px;overflow-x:auto;white-space:nowrap}
+nav b{color:var(--green);margin-right:6px}
+nav a{color:var(--ink);font-size:15px;opacity:.75} nav a:hover{opacity:1;text-decoration:none}
+
+.hero{padding:64px 0 28px;text-align:center}
+.hero .sub{font-size:22px;color:var(--gray);margin-bottom:18px}
+.venue{display:inline-block;font-size:15px;padding:4px 12px;border:1px solid var(--line);border-radius:999px;color:var(--gray);margin-bottom:22px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:8px 0 30px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:999px;background:var(--ink);color:#fff;font-size:15px;font-weight:600;border:0;cursor:pointer;font-family:inherit}
+.btn:hover{background:#000;text-decoration:none}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{background:var(--soft)}
+.btn.sm{padding:6px 13px;font-size:14px}
+.btn svg{width:16px;height:16px;fill:currentColor}
+
+.teaser-video{width:100%;border-radius:14px;display:block;background:#000;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+.caption{font-size:15px;color:var(--gray);margin-top:10px;text-align:left}
+.caption b{color:var(--ink)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:30px 0 0}
+.stat{background:var(--soft);border-radius:12px;padding:16px 14px;text-align:center}
+.stat .n{font-size:30px;font-weight:750;color:var(--green);line-height:1.1}
+.stat .n .from{color:var(--gray);font-weight:600;font-size:22px}
+.stat .l{font-size:13.5px;color:var(--gray);margin-top:6px;line-height:1.35}
+.tldr{border-left:4px solid var(--green);background:#F1F8F5;padding:16px 20px;border-radius:0 10px 10px 0;margin:30px 0 0;text-align:left;font-size:17.5px}
+.abstract{text-align:justify;hyphens:auto}
+
+figure{margin:22px 0}
+figure img{width:100%;display:block;border-radius:8px}
+figcaption{font-size:15px;color:var(--gray);margin-top:10px}
+
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}
+.step{border-radius:12px;padding:16px 16px 12px;border:1px solid var(--line)}
+.step .t{font-weight:700;margin-bottom:6px}
+.step.s1{background:#F2F3F4}.step.s2{background:#EEF4FB}.step.s2 .t{color:var(--blue)}.step.s3{background:#EEF7F3}.step.s3 .t{color:var(--green)}
+.step p{font-size:15px;margin:8px 0 0}
+.dot{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;color:#fff;font-size:13px;font-weight:700;margin-right:6px;vertical-align:1px}
+.s1 .dot{background:var(--ink)}.s2 .dot{background:var(--blue)}.s3 .dot{background:var(--green)}
+
+details{border:1px solid var(--line);border-radius:10px;margin:16px 0;background:#fff}
+details summary{cursor:pointer;padding:12px 16px;font-weight:600;list-style:none}
+details summary::before{content:"▸ ";color:var(--gray)} details[open] summary::before{content:"▾ "}
+pre{margin:0;padding:6px 18px 16px;overflow-x:auto;font-size:13.5px;line-height:1.5;font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.c{color:var(--gray)} .cb{color:var(--blue)} .cg{color:var(--green)} .kw{font-weight:700}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+
+/* playground */
+.pg{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:22px;background:var(--soft);border-radius:14px;padding:18px}
+.pg canvas#pg-canvas{width:100%;display:block;border-radius:10px;background:#fff;cursor:crosshair;touch-action:none}
+.pg canvas#pg-eig{width:100%;height:150px;display:block;background:#fff;border-radius:8px}
+.pg .row{display:grid;grid-template-columns:150px 1fr 54px;gap:10px;align-items:center;font-size:14.5px;margin:6px 0}
+.pg .row input{width:100%;accent-color:var(--green)}
+.pg .row output{text-align:right;font-variant-numeric:tabular-nums;color:var(--gray)}
+.pg .group{background:#fff;border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.pg .gt{font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--gray);margin-bottom:6px}
+.pg .kv{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:14px;font-variant-numeric:tabular-nums}
+.pg .kv b{font-weight:700}
+.pg table td i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:7px;vertical-align:4px}
+.pg .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:#fff}
+.seg button{border:0;background:#fff;padding:6px 14px;font-size:14px;cursor:pointer;font-family:inherit;color:var(--ink)}
+.seg button.on{background:var(--ink);color:#fff}
+.keylist{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13.5px;color:var(--gray);margin-top:10px}
+.keylist > span::before{content:"";display:inline-block;width:16px;height:3px;border-radius:2px;margin-right:6px;vertical-align:4px;background:var(--c)}
+.try{background:#fff;border:1px dashed #cfd5db;border-radius:10px;padding:12px 16px;margin-top:16px;font-size:15px}
+.try li{margin:4px 0}
+
+/* gallery */
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 14px}
+.tab{border:1px solid var(--line);background:#fff;padding:7px 14px;border-radius:999px;font-size:14.5px;cursor:pointer;color:var(--ink);font-family:inherit}
+.tab .pill{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:1px}
+.tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.ok{background:var(--green)} .bad{background:var(--red)}
+.gallery video{width:100%;border-radius:12px;background:#000;display:block}
+.label{display:inline-block;font-size:13px;font-weight:700;padding:3px 10px;border-radius:6px;color:#fff;margin-bottom:8px}
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:12px}
+.grid5 .thumb{position:relative;cursor:pointer;border-radius:8px;overflow:hidden;border:2px solid transparent}
+.grid5 .thumb.on{border-color:var(--ink)}
+.grid5 img{width:100%;display:block}
+.grid5 .tag{position:absolute;left:6px;top:6px;font-size:11px;font-weight:700;color:#fff;padding:2px 7px;border-radius:5px}
+
+/* charts */
+.chartbox{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}
+.chartbox svg{width:100%;height:auto;display:block}
+.qx{display:grid;grid-template-columns:1.05fr 1fr;gap:20px;align-items:start;background:var(--soft);border-radius:14px;padding:18px}
+.qx video{width:100%;border-radius:10px;background:#000;display:block}
+.qx canvas{width:100%;height:300px;display:block;background:#fff;border-radius:10px}
+.ctrl{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:14.5px}
+.ctrl input[type=range]{flex:1;min-width:180px;accent-color:var(--green)}
+.ckname{font-variant-numeric:tabular-nums;font-weight:600;min-width:160px}
+.readout{font-size:14px;color:var(--gray);margin-top:8px;font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13.5px;color:var(--gray);margin-top:8px}
+.legend i{display:inline-block;width:18px;height:3px;border-radius:2px;margin-right:6px;vertical-align:4px}
+.cb-row{display:flex;align-items:center;gap:6px;cursor:pointer}
+
+table{border-collapse:collapse;width:100%;font-size:15px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+thead th{border-bottom:2px solid var(--ink);font-weight:700}
+tr.ours td{font-weight:700;background:#F1F8F5}
+tr.sep td{border-top:1px dashed #cfd5db}
+.pg table{font-size:14px} .pg th,.pg td{padding:5px 6px}
+.bars{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.bar{display:grid;grid-template-columns:92px 1fr 56px;align-items:center;gap:10px;font-size:14.5px}
+.bar .track{background:#EEF1F4;border-radius:6px;height:22px;position:relative;overflow:hidden}
+.bar .fill{height:100%;border-radius:6px;background:#AEB7C0;width:0;transition:width 1s ease}
+.bar.ours .fill{background:var(--green)} .bar.ours{font-weight:700}
+.bar .v{text-align:right;font-variant-numeric:tabular-nums}
+.note{font-size:13.5px;color:var(--gray);margin-top:10px}
+.lim{background:#FFF8EF;border:1px solid #F3DFC2;border-radius:12px;padding:16px 20px}
+.bib{position:relative;background:var(--soft);border-radius:10px}
+.bib pre{padding:18px}
+.copy{position:absolute;right:10px;top:10px;font-size:13px;padding:5px 10px;border-radius:6px;border:1px solid var(--line);background:#fff;cursor:pointer;font-family:inherit}
+footer{padding:36px 0 60px;border-top:1px solid var(--line);font-size:14px;color:var(--gray);text-align:center}
+
+@media (max-width:860px){
+  h1{font-size:32px}.hero .sub{font-size:18px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .steps,.two,.qx,.pg{grid-template-columns:1fr}
+  .grid5{grid-template-columns:repeat(3,1fr)}
+  section{padding:40px 0}
+  .pg .row{grid-template-columns:120px 1fr 50px}
+}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <b>RFPI</b>
+  <a href="#abstract">Abstract</a>
+  <a href="#problem">Problem</a>
+  <a href="#method">Method</a>
+  <a href="#playground">Playground</a>
+  <a href="#robot">Real Robot</a>
+  <a href="#critic">Critic Values</a>
+  <a href="#sim">Simulation</a>
+  <a href="#bibtex">BibTeX</a>
+</div></nav>
+
+<header class="hero wrap">
+  <h1><span class="acr">R</span>etraction-<span class="acr">F</span>iltered <span class="acr">P</span>olicy <span class="acr">I</span>mprovement</h1>
+  <div class="sub">Using a Flow Policy's Own Geometry to Guide It</div>
+  <div class="venue">Anonymous Authors &nbsp;·&nbsp; Under review at ICLR 2027</div>
+  <div class="btns">
+    <a class="btn" href="#" id="paper-link"><svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6z M14 2v6h6"/></svg>Paper</a>
+    <a class="btn" href="#" id="code-link"><svg viewBox="0 0 24 24"><path d="M8.5 16.5 4 12l4.5-4.5 1.4 1.4L6.8 12l3.1 3.1zm7 0-1.4-1.4 3.1-3.1-3.1-3.1 1.4-1.4L20 12z"/></svg>Code (anonymized)</a>
+    <a class="btn ghost" href="#playground">Interactive Demo</a>
+    <a class="btn ghost" href="#robot"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>Robot Videos</a>
+  </div>
+
+  <video class="teaser-video" src="static/videos/third_0.mp4" poster="static/images/poster_third_0.jpg" autoplay muted loop playsinline controls></video>
+  <div class="caption"><b>RFPI on real-world phone-charger plug insertion.</b> A behavior-cloned \(\pi_{0.5}\) policy is improved with a learned critic, where each proposed action chunk is filtered and retracted by the policy's own flow. Real-time playback.</div>
+
+  <div class="stats">
+    <div class="stat"><div class="n"><span class="from">55.0 →</span> 76.7%</div><div class="l">real-robot success with test-time guidance only (no policy update)</div></div>
+    <div class="stat"><div class="n"><span class="from">55.0 →</span> 98.3%</div><div class="l">real-robot success after 30 min of online RL (100% at 1 h)</div></div>
+    <div class="stat"><div class="n">98.8%</div><div class="l">OGBench cube-single after offline-to-online RL</div></div>
+    <div class="stat"><div class="n">0</div><div class="l">extra trainable modules: one critic gradient, one JVP, one forward pass</div></div>
+  </div>
+
+  <div class="tldr"><b>TL;DR.</b> A critic can be accurate on demonstrated actions and still give unreliable action <em>gradients</em>, because data never constrain the component pointing off the data manifold. RFPI uses the pretrained flow's one-step denoising map \(R\) to fix both the <span style="color:var(--blue)"><b>direction</b></span> (its Jacobian \(J_R\) keeps the tangent part of \(\nabla_a Q\)) and the <span style="color:var(--green)"><b>destination</b></span> (\(R\) retracts the stepped action back to the support).</div>
+</header>
+
+<section id="abstract" class="first"><div class="wrap">
+  <h2>Abstract</h2>
+  <p class="abstract">A learned critic can improve a pretrained flow-matching policy by steering sampled actions toward higher-value regions. However, accurate critic values on in-distribution actions do not imply reliable action gradients at those actions. Gradient components pointing away from the data-supported region are only weakly constrained by behavior data, so following them can exploit critic extrapolation errors. We introduce <b>Retraction-Filtered Policy Improvement (RFPI)</b>, which constrains critic guidance using geometry already encoded by the pretrained flow. Theoretically, we show that the flow-induced denoising map approximately projects nearby actions onto this manifold, while its Jacobian approximately preserves tangent components and suppresses normal ones. RFPI uses the Jacobian to constrain the <em>direction</em> of critic-guided improvement and the denoising map to constrain the <em>destination</em> of the resulting action. The same update can guide actions at test time or provide targets for policy distillation and online reinforcement learning. In a controlled study with known geometry, RFPI reaches the highest true return among the compared updates while keeping nearly all improved actions within the data support. In offline-to-online training, it attains the highest mean final success among the compared critic-guidance methods on LIBERO benchmarks, and reaches 98.8% success on OGBench cube task. On real-world plug insertion task, test-time RFPI raises the success rate of a behavior-cloned \(\pi_{0.5}\) policy from 55.0% to 76.7% (73.3% with a second critic) without updating the policy, and subsequent online training reaches 98.3% within 30 minutes. These results show that a pretrained generative policy provides not only an expressive action distribution, but also local geometry for reliable policy improvement.</p>
+</div></section>
+
+<section id="problem"><div class="wrap">
+  <h2>Accurate critic values, unreliable critic gradients</h2>
+  <figure><img src="static/images/teaser.png" alt="RFPI overview: the problem, the method, and the real-robot result"></figure>
+  <div class="two">
+    <div>
+      <h3>The problem</h3>
+      <p>Model the demonstrated actions for a state \(s\) as a low-dimensional manifold \(\mathcal M_s\). Critic values observed <em>on</em> \(\mathcal M_s\) determine how \(Q\) changes along tangent directions, but not along normal directions. Two critics that agree on every data-supported action can have arbitrarily different normal derivatives.</p>
+      <p>Raw ascent \(a + \eta\,\nabla_a Q\) follows this unconstrained normal component off the support, into regions where a high predicted value is often just extrapolation error. Even a perfectly tangent step leaves a <em>curved</em> manifold at finite step size.</p>
+    </div>
+    <div>
+      <h3>What reliable improvement needs</h3>
+      <p>Two operations on an <em>unknown</em> manifold:</p>
+      <p>① a tangent projector \(P_T\) to filter the update <span style="color:var(--blue)"><b>direction</b></span>, and<br>② a retraction to correct the update <span style="color:var(--green)"><b>destination</b></span>.</p>
+      $$a^{+} \;=\; \operatorname{Retr}_{a}\!\big(\eta\, P_T\, \nabla_a Q(s,a)\big)$$
+      <p>Our key observation: a pretrained flow policy already supplies both, through a single map that costs one velocity evaluation.</p>
+    </div>
+  </div>
+  <figure><img src="static/images/design_space.png" alt="Design space: raw ascent, filter only, raw + retract, filter + retract">
+  <figcaption><b>Two operations, four updates.</b> Only filtering <em>and</em> retracting gives an update that is invariant to the unidentifiable normal gradient (\(\mathbf g\) vs. \(\mathbf g'\)) and lands on \(\mathcal M_s\).</figcaption></figure>
+</div></section>
+
+<section id="method"><div class="wrap">
+  <h2>Method: one RFPI step</h2>
+  <p>Let \(\bar\theta\) be the frozen behavior-cloned flow and \(t_g\in(0,1)\) a guidance level. Treating an action as a partially-noised flow state gives the <b>denoising map</b></p>
+  $$R(s,a) \;=\; t_g\,a \;+\; (1-t_g)\,v_{\bar\theta}\big(s,\;t_g a,\;t_g\big), \qquad J_R(s,a) \;=\; \partial_a R(s,a).$$
+  <div class="steps">
+    <div class="step s1"><div class="t"><span class="dot">1</span>Critic gradient</div>$$\mathbf g=\nabla_a Q_\phi(s,a)$$<p>Read the critic at an action sampled from the policy.</p></div>
+    <div class="step s2"><div class="t"><span class="dot">2</span>Filter</div>$$\tilde{\mathbf g}=J_R(s,a)\,\mathbf g$$<p>Keep the tangent part; suppress the normal part that behavior data cannot identify.</p></div>
+    <div class="step s3"><div class="t"><span class="dot">3</span>Step &amp; retract</div>$$a^{+}=R\big(s,\;a+\eta\,\tilde{\mathbf g}\big)$$<p>Take a finite step, then pull the endpoint back to the behavior support.</p></div>
+  </div>
+  <figure><img src="static/images/method.png" alt="RFPI method diagram">
+  <figcaption>The refined action \(a^{+}\) is either <b>executed</b> directly (test-time guidance) or <b>distilled</b> into the actor as a stop-gradient flow-matching target (offline distillation and offline-to-online RL). A single Jacobian-vector product returns both \(R(s,a)\) and \(\tilde{\mathbf g}\), so there is no critic Hessian and no backpropagation through the sampling chain.</figcaption></figure>
+
+  <details><summary>PyTorch-style pseudocode</summary>
+<pre><span class="c"># v_ref: frozen BC velocity   t_g: guidance level   Q: critic</span>
+<span class="kw">def</span> R(s, a):                                     <span class="c"># denoising map of the frozen flow</span>
+    <span class="kw">return</span> t_g * a + (1 - t_g) * v_ref(s, t_g * a, t_g)
+
+<span class="kw">def</span> rfpi(s, a, eta):
+    g = grad(Q(s, a), a)                         <span class="c"># ① critic gradient</span>
+    _, g_f = jvp(<span class="kw">lambda</span> x: R(s, x), (a,), (g,))  <span class="cb"># ② filter: g_f = J_R g</span>
+    <span class="kw">return</span> stopgrad(R(s, a + eta * g_f))         <span class="cg"># ③ step, then retract</span>
+
+<span class="kw">for</span> it <span class="kw">in</span> range(num_iters):
+    <span class="kw">if</span> online:
+        collect(pi, env, E); td_update(Q, B_off, B_on, E)
+    eta   = calibrate(pi, Q)                     <span class="c"># median displacement = d_target</span>
+    s     = sample_contexts()
+    a_tgt = rfpi(s, pi.sample(s), eta)           <span class="c"># fixed target bank</span>
+    <span class="kw">for</span> _ <span class="kw">in</span> range(n_fm):                        <span class="c"># distill with flow matching</span>
+        s_b, a_b = minibatch(s, a_tgt)
+        t, z = rand(), randn_like(a_b)
+        x_t  = (1 - t) * z + t * a_b
+        loss = mse(pi.v(s_b, x_t, t), a_b - z); loss.backward(); opt.step()</pre>
+  </details>
+
+  <h3>Why a denoiser is both a filter and a retraction</h3>
+  <p>For the population-optimal flow, with noise scale \(\sigma=(1-t_g)/t_g\), the denoising map is a posterior mean and its Jacobian is a scaled posterior covariance (Tweedie's identity):</p>
+  $$R^{\mathrm{opt}}(s,a)=\mathbb E\big[A \,\big|\, A+\sigma Z=a\big], \qquad J_R^{\mathrm{opt}}(s,a)=\sigma^{-2}\,\mathrm{Cov}\big[A \,\big|\, A+\sigma Z=a\big].$$
+  <p>Near the manifold the posterior concentrates at the nearest manifold point and spreads only along it, so</p>
+  $$\underbrace{R^{\mathrm{opt}}=\Pi_s+O(\sigma^2)}_{\text{retraction}} \qquad\qquad \underbrace{J_R^{\mathrm{opt}}=P_T+O(\sigma^2)}_{\text{tangent filter}}$$
+  <p>As \(t_g\to 1\), \(R\to\mathrm{id}\) and \(J_R\to I\). This is the identity-Jacobian approximation used by prior guidance methods, and it filters nothing.</p>
+  <figure><img src="static/images/denoiser.png" alt="Ideal denoising map on a ring manifold">
+  <figcaption>Exact computation on a thin ring. <b>(a)</b> With a critic whose normal slope is extrapolated, raw ascent walks off the ring while RFPI moves along it to the true optimum. <b>(b)</b> \(R(a)-a\) points to the nearest ring point. <b>(c)</b> \(J_R\) keeps tangent directions (\(\lambda_T=0.99\)) and suppresses normal ones (\(\lambda_N=0.014\)) at \(t_g=0.9\). <b>(d)</b> The filtered gradient at three guidance levels.</figcaption></figure>
+</div></section>
+
+<section id="playground"><div class="wrap">
+  <h2>Interactive: see the geometry yourself</h2>
+  <p>Below is the ideal version of RFPI, computed exactly in the browser. Behavior actions lie on a curve \(\mathcal M_s\) with thickness \(s_N\). The critic \(\hat Q\) is <b>correct on the curve</b> but has an <b>extrapolated normal slope</b> \(\beta\) off it (orange shading = \(\hat Q\), darker is higher). The star marks the true best action. \(R\) and \(J_R\) are the exact posterior mean and covariance of the data at noise level \(\sigma=(1-t_g)/t_g\). They are what a perfectly trained flow would give.</p>
+  <div class="pg">
+    <div>
+      <canvas id="pg-canvas" width="600" height="600" aria-label="Manifold playground: drag the black action point"></canvas>
+      <div class="keylist">
+        <span style="--c:var(--red)">critic gradient \(\nabla\hat Q\)</span>
+        <span style="--c:var(--orange)">its normal part</span>
+        <span style="--c:var(--blue)">filtered \(J_R\nabla\hat Q\)</span>
+        <span style="--c:var(--green)">retraction to \(a^{+}\)</span>
+      </div>
+      <p class="note" style="margin-top:6px"><b>Drag</b> the black point anywhere to inspect a single step. Arrows are drawn at a common scale, so the shrinkage of the normal part is visible.</p>
+    </div>
+    <div>
+      <div class="group">
+        <div class="btnrow" style="margin-top:0">
+          <div class="seg"><button data-shape="ring" class="on">Ring</button><button data-shape="wave">Wave</button></div>
+          <button class="btn sm" id="pg-run">▶ Run updates</button>
+          <button class="btn ghost sm" id="pg-flip">Swap critic \(\beta\to-\beta\)</button>
+        </div>
+        <div class="row"><label for="pg-tg">guidance level \(t_g\)</label><input id="pg-tg" type="range" min="0.6" max="1" step="0.001" value="0.9"><output id="pg-tg-v"></output></div>
+        <div class="row"><label for="pg-beta">critic normal slope \(\beta\)</label><input id="pg-beta" type="range" min="-4" max="4" step="0.1" value="2.5"><output id="pg-beta-v"></output></div>
+        <div class="row"><label for="pg-sn">data thickness \(s_N\)</label><input id="pg-sn" type="range" min="0.004" max="0.12" step="0.001" value="0.01"><output id="pg-sn-v"></output></div>
+        <div class="row"><label for="pg-L">step length</label><input id="pg-L" type="range" min="0.02" max="0.25" step="0.01" value="0.08"><output id="pg-L-v"></output></div>
+        <label class="cb-row small" style="margin-top:6px"><input type="checkbox" id="pg-alt"> overlay paths under the other critic \(\hat Q'\) (slope \(-\beta\), dashed)</label>
+      </div>
+      <div class="group">
+        <div class="gt">At the black point</div>
+        <div class="kv">
+          <span>noise scale \(\sigma\)</span><b id="pg-sig"></b>
+          <span>tangent gain \(t^\top J_R\, t\)</span><b id="pg-lt" style="color:var(--blue)"></b>
+          <span>normal gain \(\lVert J_R\, n\rVert\)</span><b id="pg-ln" style="color:var(--orange)"></b>
+          <span>normal part of gradient</span><b id="pg-norm"></b>
+        </div>
+        <canvas id="pg-eig" width="400" height="150" style="margin-top:10px"></canvas>
+        <div class="legend" style="margin-top:4px"><span><i style="background:var(--blue)"></i>tangent gain</span><span><i style="background:var(--orange)"></i>normal gain</span><span>dashed line = current \(t_g\)</span></div>
+      </div>
+      <div class="group">
+        <div class="gt">After the updates</div>
+        <table><thead><tr><th>Update</th><th>true value ↑</th><th>dist. to \(\mathcal M\) ↓</th></tr></thead><tbody id="pg-board"></tbody></table>
+      </div>
+    </div>
+  </div>
+  <div class="try"><b>Things to try</b>
+    <ul>
+      <li><a href="#playground" data-preset="paper">Default setting</a> (\(t_g=0.9\)): raw ascent follows the fake normal slope off the ring; RFPI slides along it to the star.</li>
+      <li>Tick the overlay and press <em>Swap critic</em>: the two critics agree on \(\mathcal M_s\), yet raw ascent goes to opposite sides. RFPI's path barely changes, which is the identifiability argument in action.</li>
+      <li><a href="#playground" data-preset="weak">Set \(t_g=0.99\)</a> or <a href="#playground" data-preset="id">\(t_g=1\)</a>: once \(\sigma\) is below the data thickness, \(J_R\to I\) and the filter disappears. This is the identity-Jacobian limit of prior guidance methods.</li>
+      <li>Switch to <em>Wave</em> and increase the step length. Filter-only drifts off the curved manifold, and the retraction \(R\) is what brings it back.</li>
+    </ul>
+  </div>
+</div></section>
+
+<section id="robot"><div class="wrap">
+  <h2>Real robot: phone-charger plug insertion</h2>
+  <p>A bimanual humanoid must pick up a charger plug and insert it into a power strip. The task is contact-rich and needs millimetre-level alignment. The base policy is a behavior-cloned \(\pi_{0.5}\) (55.0% success). We evaluate RFPI in two regimes: <b>test-time guidance</b> of the frozen policy, and <b>offline-to-online RL</b> where refined actions are distilled back into the policy.</p>
+
+  <div class="gallery">
+    <div class="tabs" id="rtabs"></div>
+    <div id="rlabel"></div>
+    <video id="rvid" muted playsinline controls loop preload="metadata"></video>
+    <div class="grid5" id="rthumbs"></div>
+    <p class="note">Third-person view, real-time playback. Green: RFPI rollouts (success). Red: unguided BC rollouts (failure), shown for comparison.</p>
+  </div>
+
+  <h3>Online RL on the real robot</h3>
+  <div class="two">
+    <div class="chartbox"><svg id="online-chart" viewBox="0 0 560 340" role="img" aria-label="Success rate versus online robot time"></svg></div>
+    <div>
+      <table>
+        <thead><tr><th>Method</th><th>warm-up end</th><th>0.5 h</th><th>1.0 h</th><th>1.5 h</th></tr></thead>
+        <tbody>
+          <tr class="ours"><td>RFPI</td><td>55.0</td><td>98.3</td><td>100.0</td><td>96.7</td></tr>
+          <tr><td>Q-VGM</td><td>55.0</td><td>95.0</td><td>93.3</td><td>95.0</td></tr>
+          <tr><td>QGF</td><td>55.0</td><td>88.3</td><td>91.7</td><td>90.0</td></tr>
+          <tr><td>FlowDPG</td><td>55.0</td><td>88.3</td><td>86.7</td><td>85.0</td></tr>
+        </tbody>
+      </table>
+      <p class="note">Success rate (%) versus robot interaction time after critic warm-up. All methods start from the same BC policy and the same warmed-up critic, then differ only in how critic guidance produces policy-improvement targets. RFPI reaches 98.3% within 30 minutes and is the highest at every checkpoint.</p>
+    </div>
+  </div>
+
+  <h3>Test-time guidance (no policy update)</h3>
+  <div class="two">
+    <div>
+      <div class="small muted" style="margin-bottom:6px">Critic 1</div>
+      <div class="bars" data-bars='[["BC",55.00],["QGF",58.33],["FlowDPG",63.33],["RFPI",76.67,1]]'></div>
+    </div>
+    <div>
+      <div class="small muted" style="margin-bottom:6px">Critic 2</div>
+      <div class="bars" data-bars='[["BC",55.00],["QGF",56.67],["Q-VGM",58.33],["FlowDPG",66.67],["RFPI",73.33,1]]'></div>
+    </div>
+  </div>
+  <p class="note">Success rate (%). The same frozen BC policy is guided with two independently trained critic checkpoints. Baselines are our implementations adapted to this setting.</p>
+</div></section>
+
+<section id="critic"><div class="wrap">
+  <h2>What does the critic see?</h2>
+  <p>Critic value \(\min(Q_1,Q_2)\) for every executed action chunk, synchronized with the robot's head camera. In successful rollouts the value rises sharply as the plug approaches and seats in the socket. In failed rollouts it stays flat. Drag the slider to see how this structure emerges during online critic training. Click the chart to seek the video.</p>
+  <div class="qx">
+    <div>
+      <div class="tabs" id="qtabs" style="margin-top:0"></div>
+      <video id="qvid" muted playsinline controls preload="auto"></video>
+      <div class="readout" id="qread">&nbsp;</div>
+    </div>
+    <div>
+      <canvas id="qcanvas" width="900" height="600"></canvas>
+      <div class="legend">
+        <span><i style="background:var(--green)"></i>RFPI (success)</span>
+        <span><i style="background:var(--red)"></i>BC (failure)</span>
+        <label class="cb-row"><input type="checkbox" id="qall" checked> show other rollouts</label>
+      </div>
+      <div class="ctrl">
+        <span class="small muted">Checkpoint</span>
+        <input type="range" id="qck" min="0" max="6" step="1" value="6">
+        <span class="ckname" id="qckname"></span>
+      </div>
+    </div>
+  </div>
+  <p class="note">One action chunk = 30 frames at 30 FPS. Raw critic outputs, not normalized. Critic update counts range from 100 (after warm-up) to 340.</p>
+</div></section>
+
+<section id="sim"><div class="wrap">
+  <h2>Simulation results</h2>
+  <div class="two">
+    <div>
+      <h3 style="margin-top:0">Controlled study with known geometry</h3>
+      <p class="small muted">\(D=16\) manifold, 30 refinement–distillation rounds, median over 8 actor seeds.</p>
+      <table>
+        <thead><tr><th>Method</th><th>True objective ↑</th><th>Dist. to \(\mathcal M\), p95 ↓</th></tr></thead>
+        <tbody>
+          <tr><td>BC reference</td><td>0.395</td><td>0.015</td></tr>
+          <tr><td>Self-distillation</td><td>0.266</td><td>0.081</td></tr>
+          <tr class="sep"><td>Raw ascent</td><td>−16.794</td><td>1.016</td></tr>
+          <tr><td>Filter-only</td><td>−0.582</td><td>0.430</td></tr>
+          <tr><td>Raw + \(R\)</td><td>0.774</td><td>0.073</td></tr>
+          <tr class="ours"><td>RFPI</td><td>0.827</td><td>0.028</td></tr>
+        </tbody>
+      </table>
+      <p class="note">RFPI reaches the highest true objective while keeping improved actions closest to the data support. This is the high-dimensional counterpart of the playground above.</p>
+    </div>
+    <div>
+      <h3 style="margin-top:0">LIBERO, offline-to-online</h3>
+      <p class="small muted">Final success (%), all 10 tasks per suite, mean ± std over 3 seeds.</p>
+      <table>
+        <thead><tr><th>Method</th><th>Goal</th><th>Object</th></tr></thead>
+        <tbody>
+          <tr><td>Self-distillation</td><td>59.6 ± 11.9</td><td>42.2 ± 5.3</td></tr>
+          <tr><td>AWR</td><td>71.9 ± 3.3</td><td>58.4 ± 0.7</td></tr>
+          <tr><td>FlowDPG</td><td>68.1 ± 3.2</td><td>49.3 ± 8.0</td></tr>
+          <tr><td>Q-VGM</td><td>73.6 ± 0.4</td><td>59.9 ± 2.0</td></tr>
+          <tr class="sep"><td>Raw ascent</td><td>67.9 ± 5.8</td><td>56.6 ± 6.4</td></tr>
+          <tr><td>Filter-only</td><td>70.9 ± 5.6</td><td>57.8 ± 6.0</td></tr>
+          <tr><td>Raw + \(R\)</td><td>79.4 ± 1.4</td><td>62.1 ± 6.7</td></tr>
+          <tr class="ours"><td>RFPI</td><td>79.8 ± 4.0</td><td>63.1 ± 5.3</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="stats" style="grid-template-columns:repeat(2,1fr)">
+    <div class="stat"><div class="n"><span class="from">53.0 →</span> 70.3%</div><div class="l">RoboMimic Can (multi-human), after two refinement rounds (Raw + R: 67.0%)</div></div>
+    <div class="stat"><div class="n">98.8%</div><div class="l">OGBench cube-single, online learning from an offline-refined initialization</div></div>
+  </div>
+
+  <h3>Limitations</h3>
+  <div class="lim">
+    <p style="margin:0">The geometric interpretation relies on local manifold assumptions and on the accuracy of the learned flow and its Jacobian. In a dimension sweep with a fixed training budget, normal attenuation weakened substantially for a \(D=512\) model. On LIBERO, RFPI and Raw + \(R\) perform similarly, so the additional control benefit of filtering beyond endpoint correction is not yet established there. Repeated purely-offline refinement–distillation rounds degraded LIBERO success, which motivates separating errors in the refined targets from errors in fitting them.</p>
+  </div>
+</div></section>
+
+<section id="bibtex"><div class="wrap">
+  <h2>BibTeX</h2>
+  <div class="bib"><button class="copy" id="copybib">Copy</button>
+<pre id="bibtxt">@inproceedings{anonymous2027rfpi,
+  title     = {Retraction-Filtered Policy Improvement:
+               Using a Flow Policy's Own Geometry to Guide It},
+  author    = {Anonymous},
+  booktitle = {Submitted to International Conference on Learning Representations (ICLR)},
+  year      = {2027},
+  note      = {Under review}
+}</pre></div>
+</div></section>
+
+<footer><div class="wrap">This page is anonymized for double-blind review.</div></footer>
+
+<script>
+const QDATA = /*QDATA*/;
+const ROLL = [
+  {id:0, ok:true,  name:"RFPI · rollout 1"},
+  {id:1, ok:true,  name:"RFPI · rollout 2"},
+  {id:2, ok:true,  name:"RFPI · rollout 3"},
+  {id:3, ok:false, name:"BC · rollout 1"},
+  {id:4, ok:false, name:"BC · rollout 2"},
+];
+
+/* ---------- rollout gallery ---------- */
+(function(){
+  const tabs=document.getElementById('rtabs'), th=document.getElementById('rthumbs'),
+        v=document.getElementById('rvid'), lab=document.getElementById('rlabel');
+  function sel(i){
+    const r=ROLL[i];
+    v.src=`static/videos/third_${r.id}.mp4`; v.poster=`static/images/poster_third_${r.id}.jpg`;
+    v.play().catch(()=>{});
+    lab.innerHTML=`<span class="label ${r.ok?'ok':'bad'}">${r.ok?'RFPI · Success':'Unguided BC · Failure'}</span>`;
+    [...tabs.children].forEach((b,k)=>b.classList.toggle('on',k===i));
+    [...th.children].forEach((b,k)=>b.classList.toggle('on',k===i));
+  }
+  ROLL.forEach((r,i)=>{
+    const b=document.createElement('button'); b.className='tab';
+    b.innerHTML=`<span class="pill ${r.ok?'ok':'bad'}"></span>${r.name}`; b.onclick=()=>sel(i); tabs.appendChild(b);
+    const t=document.createElement('div'); t.className='thumb';
+    t.innerHTML=`<img loading="lazy" src="static/images/poster_third_${r.id}.jpg" alt="${r.name}"><span class="tag ${r.ok?'ok':'bad'}">${r.ok?'Success':'Failure'}</span>`;
+    t.onclick=()=>sel(i); th.appendChild(t);
+  });
+  let started=false;
+  new IntersectionObserver(e=>{ if(e[0].isIntersecting&&!started){started=true;sel(0);} },{threshold:.2}).observe(v);
+})();
+
+/* ---------- bars ---------- */
+document.querySelectorAll('.bars').forEach(el=>{
+  const rows=JSON.parse(el.dataset.bars);
+  el.innerHTML=rows.map(([n,val,o])=>`<div class="bar ${o?'ours':''}"><span>${n}</span><div class="track"><div class="fill" data-w="${val}"></div></div><span class="v">${val.toFixed(1)}</span></div>`).join('');
+  new IntersectionObserver((e,obs)=>{ if(e[0].isIntersecting){ el.querySelectorAll('.fill').forEach(f=>f.style.width=f.dataset.w+'%'); obs.disconnect(); } },{threshold:.3}).observe(el);
+});
+
+/* ---------- online real-robot chart (SVG) ---------- */
+(function(){
+  const svg=document.getElementById('online-chart'); if(!svg) return;
+  const T=[0,0.5,1.0,1.5];
+  const S=[
+    {n:'RFPI',    c:'#1F8A70', w:3.4, v:[55,98.33,100,96.67]},
+    {n:'Q-VGM',   c:'#2B6CB0', w:2,   v:[55,95,93.33,95]},
+    {n:'QGF',     c:'#D9822B', w:2,   v:[55,88.33,91.67,90]},
+    {n:'FlowDPG', c:'#7B5EA7', w:2,   v:[55,88.33,86.67,85]},
+  ];
+  const W=560,H=340,L=46,R=92,Tp=16,B=44, x=t=>L+(t+0.12)/(1.62)*(W-L-R), y=v=>Tp+(1-(v-50)/52)*(H-Tp-B);
+  let h='';
+  for(let v=50;v<=100;v+=10){ h+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#E8ECEF"/><text x="${L-8}" y="${y(v)+4}" font-size="12" fill="#6B7480" text-anchor="end">${v}</text>`; }
+  T.forEach((t,i)=>{ h+=`<text x="${x(t)}" y="${H-B+18}" font-size="12" fill="#6B7480" text-anchor="middle">${i?t.toFixed(1)+' h':'0'}</text>`; });
+  h+=`<text x="${(L+W-R)/2}" y="${H-6}" font-size="12.5" fill="#6B7480" text-anchor="middle">online robot time after critic warm-up</text>`;
+  h+=`<text transform="translate(13,${(Tp+H-B)/2}) rotate(-90)" font-size="12.5" fill="#6B7480" text-anchor="middle">success rate (%)</text>`;
+  // warm-up marker
+  h+=`<rect x="${L}" y="${Tp}" width="${x(0)-L}" height="${H-Tp-B}" fill="#F2F3F4"/>`;
+  h+=`<line x1="${x(0)}" x2="${x(0)}" y1="${Tp}" y2="${H-B}" stroke="#22262A" stroke-dasharray="4 4"/>`;
+  h+=`<text x="${x(0)+6}" y="${y(66)}" font-size="12" fill="#22262A">warm-up ends</text>`;
+  h+=`<text x="${x(0)+6}" y="${y(66)+15}" font-size="11.5" fill="#6B7480">(BC policy, 55%)</text>`;
+  const order=[...S].reverse();
+  order.forEach(s=>{
+    const d=s.v.map((v,i)=>`${i?'L':'M'}${x(T[i])},${y(v)}`).join(' ');
+    h+=`<path d="${d}" fill="none" stroke="${s.c}" stroke-width="${s.w}" stroke-linejoin="round" class="ol" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>`;
+    s.v.forEach((v,i)=>{ h+=`<circle cx="${x(T[i])}" cy="${y(v)}" r="${s.n==='RFPI'?4.5:3.2}" fill="${s.c}" stroke="#fff" stroke-width="1.5"/>`; });
+  });
+  // end labels (nudged to avoid overlap)
+  const ends=S.map(s=>({s,yy:y(s.v[3])})).sort((a,b)=>a.yy-b.yy);
+  for(let i=1;i<ends.length;i++) if(ends[i].yy-ends[i-1].yy<14) ends[i].yy=ends[i-1].yy+14;
+  ends.forEach(e=>{ h+=`<text x="${x(1.5)+10}" y="${e.yy+4}" font-size="12.5" font-weight="${e.s.n==='RFPI'?700:500}" fill="${e.s.c}">${e.s.n}</text>`; });
+  svg.innerHTML=h;
+  new IntersectionObserver((e,o)=>{ if(e[0].isIntersecting){ svg.querySelectorAll('.ol').forEach(p=>{p.style.transition='stroke-dashoffset 1.4s ease';p.style.strokeDashoffset=0;}); o.disconnect(); } },{threshold:.3}).observe(svg);
+})();
+
+/* ---------- Q explorer ---------- */
+(function(){
+  const cv=document.getElementById('qcanvas'), ctx=cv.getContext('2d'),
+        v=document.getElementById('qvid'), tabs=document.getElementById('qtabs'),
+        slider=document.getElementById('qck'), ckname=document.getElementById('qckname'),
+        read=document.getElementById('qread'), all=document.getElementById('qall');
+  const G='#1F8A70', RD='#C8453A';
+  let cur=0, ymin=Infinity, ymax=-Infinity;
+  QDATA.order.forEach(c=>Object.values(QDATA.ck[c].traj).forEach(t=>t.q.forEach(q=>{ymin=Math.min(ymin,q);ymax=Math.max(ymax,q);})));
+  ymin=Math.floor(ymin*10)/10; ymax=Math.ceil(ymax*10)/10;
+  const XMAX=30;
+  function label(c){ const u=QDATA.ck[c].updates; return (c==='critic_warmup'?'after warm-up':c.replace('global_step_','step '))+` · ${u} critic updates`; }
+  function sizeCanvas(){ const r=cv.getBoundingClientRect(), d=window.devicePixelRatio||1; cv.width=Math.round(r.width*d); cv.height=Math.round(r.height*d); ctx.setTransform(d,0,0,d,0,0); }
+  function draw(){
+    const W=cv.clientWidth, H=cv.clientHeight, L=48,R=12,T=14,B=38;
+    ctx.clearRect(0,0,W,H);
+    const X=i=>L+(i/XMAX)*(W-L-R), Y=q=>T+(1-(q-ymin)/(ymax-ymin))*(H-T-B);
+    ctx.strokeStyle='#E8ECEF'; ctx.lineWidth=1; ctx.fillStyle='#6B7480'; ctx.font='12px -apple-system,Segoe UI,sans-serif';
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    for(let q=ymin;q<=ymax+1e-9;q+=0.2){ const y=Y(q); ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(W-R,y); ctx.stroke(); ctx.fillText(q.toFixed(1),L-6,y); }
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    for(let i=0;i<=XMAX;i+=5){ const x=X(i); ctx.beginPath(); ctx.moveTo(x,T); ctx.lineTo(x,H-B); ctx.stroke(); ctx.fillText(i,x,H-B+6); }
+    ctx.fillText('action-chunk index',(L+W-R)/2,H-16);
+    ctx.save(); ctx.translate(12,(T+H-B)/2); ctx.rotate(-Math.PI/2); ctx.fillText('min(Q₁, Q₂)',0,-2); ctx.restore();
+    if(ymin<0&&ymax>0){ ctx.strokeStyle='#C9D0D6'; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(L,Y(0)); ctx.lineTo(W-R,Y(0)); ctx.stroke(); ctx.setLineDash([]); }
+    const ck=QDATA.order[+slider.value], trs=QDATA.ck[ck].traj;
+    const line=(t,col,w,a)=>{ ctx.globalAlpha=a; ctx.strokeStyle=col; ctx.lineWidth=w; ctx.beginPath(); t.q.forEach((q,i)=>{ i?ctx.lineTo(X(i),Y(q)):ctx.moveTo(X(i),Y(q)); }); ctx.stroke(); ctx.globalAlpha=1; };
+    if(all.checked) Object.entries(trs).forEach(([k,t])=>{ if(+k!==cur) line(t,t.outcome==='success'?G:RD,1.5,.28); });
+    const t=trs[cur], col=t.outcome==='success'?G:RD;
+    line(t,col,3,1);
+    const f=Math.round((v.currentTime||0)*30);
+    let ci=t.fs.findIndex((s,i)=>f>=s&&f<=t.fe[i]); if(ci<0) ci=f<t.fs[0]?0:t.q.length-1;
+    const frac=Math.min(1,Math.max(0,(f-t.fs[ci])/(t.fe[ci]-t.fs[ci]+1)));
+    const xi=ci+frac, qi=t.q[ci]+(t.q[Math.min(ci+1,t.q.length-1)]-t.q[ci])*frac;
+    ctx.strokeStyle='#22262A'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(X(xi),T); ctx.lineTo(X(xi),H-B); ctx.stroke();
+    ctx.fillStyle=col; ctx.beginPath(); ctx.arc(X(xi),Y(qi),6,0,7); ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    read.textContent=`t = ${(v.currentTime||0).toFixed(1)} s   ·   chunk ${ci}   ·   min(Q₁,Q₂) = ${t.q[ci].toFixed(3)}`;
+    ckname.textContent=label(ck);
+  }
+  function sel(i){ cur=i; v.src=`static/videos/head_${i}.mp4`; v.poster=`static/images/poster_head_${i}.jpg`; v.play().catch(()=>{}); [...tabs.children].forEach((b,k)=>b.classList.toggle('on',k===i)); draw(); }
+  ROLL.forEach((r,i)=>{ const b=document.createElement('button'); b.className='tab'; b.innerHTML=`<span class="pill ${r.ok?'ok':'bad'}"></span>${r.name}`; b.onclick=()=>sel(i); tabs.appendChild(b); });
+  cv.addEventListener('click',e=>{ const r=cv.getBoundingClientRect(), L=48,R=12; const idx=((e.clientX-r.left-L)/(r.width-L-R))*XMAX; const t=QDATA.ck[QDATA.order[+slider.value]].traj[cur]; const c=Math.max(0,Math.min(t.q.length-1,Math.floor(idx))); v.currentTime=t.fs[c]/30+0.01; draw(); });
+  cv.style.cursor='pointer';
+  slider.oninput=draw; all.onchange=draw;
+  (function loop(){ if(!v.paused) draw(); requestAnimationFrame(loop); })();
+  v.addEventListener('seeked',draw); v.addEventListener('loadeddata',draw);
+  v.addEventListener('ended',()=>{ v.currentTime=0; v.play().catch(()=>{}); });
+  window.addEventListener('resize',()=>{sizeCanvas();draw();});
+  sizeCanvas();
+  let started=false;
+  new IntersectionObserver(e=>{ if(e[0].isIntersecting&&!started){started=true;sel(0);} },{threshold:.2}).observe(cv);
+  draw();
+})();
+
+document.getElementById('copybib').onclick=function(){
+  navigator.clipboard.writeText(document.getElementById('bibtxt').innerText).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500);});
+};
+</script>
+<script src="static/js/playground.js"></script>
+</body>
+</html>
