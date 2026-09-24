@@ -23,5 +23,3 @@ The interactive manifold demo lives in `static/js/playground.js`.
 - `static/videos/head_*.mp4`   head camera, frame-aligned with the Q-value CSV (drives the synced chart)
 - `static/images/`             paper figures rendered from PDF + video posters
 - `static/js/playground.js`    exact posterior denoiser on a ring / wave manifold (R = E[A|y], J_R = Cov[A|y]/sigma^2)
-
-Wrist-camera views are excluded: they show lab members' faces and the robot vendor logo.
