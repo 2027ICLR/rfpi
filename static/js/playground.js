@@ -212,6 +212,7 @@
       mtext(ctx, [['a', 'it'], ['+', 'sup']], X(ap[0]) - 26, Y(ap[1]) + 24, COL.green, 16);
     }
     dot(a, 7, COL.ink, '#fff');
+    if (demoOn && !userTookOver) { ctx.save(); ctx.font = '600 12px -apple-system,Segoe UI,sans-serif'; const t = 'Auto demo · drag the point or change a slider to take control'; const w = ctx.measureText(t).width; ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fillRect(10, H - 30, w + 16, 22); ctx.fillStyle = '#6B7480'; ctx.fillText(t, 18, H - 14); ctx.restore(); }
 
     // readouts
     const [l1, l2] = eig2(D.J);
@@ -256,38 +257,62 @@
 
   /* ---------------- interaction ---------------- */
   function reset(keepA) { S.pts = M().pts(S.shape === 'ring' ? 1600 : 1400); if (!keepA) S.a = M().start.slice(); S.paths = null; S.pathsAlt = null; S.anim = 0; eigCache.key = ''; heatKey = ''; draw(); }
-  function run() {
+  /* animation + auto demo: loops while the canvas is on screen, until the user interacts */
+  const STEP_MS = 90, DEMO_PAUSE = 2600;
+  let animId = 0, demoTimer = null, visible = false, userTookOver = false, demoOn = false;
+  function run(fromDemo) {
+    if (!fromDemo) { userTookOver = true; clearTimeout(demoTimer); }
+    demoOn = !!fromDemo;
     S.paths = runPaths(S.beta); S.pathsAlt = runPaths(-S.beta); S.anim = 0;
-    const t0 = performance.now();
-    (function tick(t) { S.anim = Math.min(S.K, (t - t0) / 70); draw(); if (S.anim < S.K) requestAnimationFrame(tick); })(t0);
+    const id = ++animId; let t0 = null;
+    const tick = t => {
+      if (id !== animId) return;                       // a newer run replaced this one
+      if (t0 === null) t0 = t;
+      S.anim = Math.max(0, Math.min(S.K, (t - t0) / STEP_MS)); draw();
+      if (S.anim < S.K) requestAnimationFrame(tick);
+      else if (fromDemo) scheduleDemo(DEMO_PAUSE);
+    };
+    requestAnimationFrame(tick);
   }
+  function scheduleDemo(delay) {
+    clearTimeout(demoTimer);
+    if (userTookOver || !visible) { demoOn = false; return; }
+    demoTimer = setTimeout(() => { if (!userTookOver && visible) run(true); }, delay);
+  }
+  function takeOver() { userTookOver = true; demoOn = false; clearTimeout(demoTimer); }
   let dragging = false;
   const pos = e => { const r = cv.getBoundingClientRect(), p = e.touches ? e.touches[0] : e; return [invX(p.clientX - r.left), invY(p.clientY - r.top)]; };
-  const down = e => { dragging = true; S.a = pos(e); S.paths = null; draw(); e.preventDefault(); };
+  const down = e => { takeOver(); dragging = true; S.a = pos(e); S.paths = null; draw(); e.preventDefault(); };
   const move = e => { if (!dragging) return; S.a = pos(e); draw(); e.preventDefault(); };
   cv.addEventListener('mousedown', down); window.addEventListener('mousemove', move); window.addEventListener('mouseup', () => dragging = false);
   cv.addEventListener('touchstart', down, { passive: false }); cv.addEventListener('touchmove', move, { passive: false }); cv.addEventListener('touchend', () => dragging = false);
 
-  const bind = (id, key, fmt, after) => { const el = $(id), out = $(id + '-v'); const f = () => { S[key] = +el.value; if (out) out.textContent = fmt(S[key]); if (after) after(); else { S.paths = null; } eigCache.key = ''; heatKey = ''; draw(); }; el.addEventListener('input', f); out && (out.textContent = fmt(+el.value)); };
+  const bind = (id, key, fmt, after) => { const el = $(id), out = $(id + '-v'); const f = () => { takeOver(); S[key] = +el.value; if (out) out.textContent = fmt(S[key]); if (after) after(); else { S.paths = null; } eigCache.key = ''; heatKey = ''; draw(); }; el.addEventListener('input', f); out && (out.textContent = fmt(+el.value)); };
   bind('pg-tg', 'tg', v => v.toFixed(3));
   bind('pg-sn', 'sN', v => v.toFixed(3));
   bind('pg-beta', 'beta', v => v.toFixed(1));
   bind('pg-L', 'L', v => v.toFixed(2));
-  $('pg-run').onclick = run;
-  $('pg-alt').onchange = e => { S.showAlt = e.target.checked; draw(); };
-  $('pg-flip').onclick = () => { S.beta = -S.beta; $('pg-beta').value = S.beta; $('pg-beta-v').textContent = S.beta.toFixed(1); heatKey = ''; if (S.paths) run(); else draw(); };
-  document.querySelectorAll('[data-shape]').forEach(b => b.onclick = () => { S.shape = b.dataset.shape; document.querySelectorAll('[data-shape]').forEach(x => x.classList.toggle('on', x === b)); reset(false); });
+  $('pg-run').onclick = () => run(false);
+  $('pg-alt').onchange = e => { takeOver(); S.showAlt = e.target.checked; draw(); };
+  $('pg-flip').onclick = () => { S.beta = -S.beta; $('pg-beta').value = S.beta; $('pg-beta-v').textContent = S.beta.toFixed(1); heatKey = ''; if (S.paths) run(false); else draw(); };
+  document.querySelectorAll('[data-shape]').forEach(b => b.onclick = () => { takeOver(); S.shape = b.dataset.shape; document.querySelectorAll('[data-shape]').forEach(x => x.classList.toggle('on', x === b)); reset(false); });
   document.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
     const p = b.dataset.preset;
     if (p === 'id') { S.tg = 1; } else if (p === 'paper') { S.tg = 0.9; S.sN = 0.01; } else if (p === 'weak') { S.tg = 0.99; }
     $('pg-tg').value = S.tg; $('pg-tg-v').textContent = S.tg.toFixed(3); $('pg-sn').value = S.sN; $('pg-sn-v').textContent = S.sN.toFixed(3);
-    eigCache.key = ''; run();
+    eigCache.key = ''; run(false);
   });
   window.addEventListener('resize', () => { size(); draw(); });
 
   size(); reset(false);
   if (document.fonts && document.fonts.load) Promise.all(['16px KaTeX_Main', 'italic 16px KaTeX_Math', '18px KaTeX_Caligraphic'].map(f => document.fonts.load(f))).catch(() => {}).then(() => { eigCache.key = ''; draw(); });
   // run once when first visible
-  let seen = false; new IntersectionObserver(e => { if (e[0].isIntersecting && !seen) { seen = true; run(); } }, { threshold: .3 }).observe(cv);
+  // auto demo: start once most of the canvas is on screen; pause when it scrolls away
+  new IntersectionObserver(e => {
+    visible = e[0].isIntersecting;
+    if (visible) { if (!userTookOver && !demoOn) scheduleDemo(400); }
+    else clearTimeout(demoTimer);
+  }, { threshold: 0.55 }).observe(cv);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) clearTimeout(demoTimer); else if (visible && !demoOn) scheduleDemo(400); });
   window.__rfpiPlayground = { S, denoise, step, runPaths, nearest, METHODS, gradQ };
 })();
